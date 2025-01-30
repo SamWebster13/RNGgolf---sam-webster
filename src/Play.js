@@ -51,17 +51,14 @@ class Play extends Phaser.Scene {
         this.oneWay.body.setImmovable(true)
         this.oneWay.body.checkCollision.down = false
 
-        // add pointer input
+        // Pointer input for shooting
         this.input.on('pointerdown', (pointer) => {
-            let shotDirection = pointer.y <= this.ball.y ? 1 : -1
+            let shotDirection = pointer.y <= this.ball.y ? 1 : -1;
             this.ball.body.setVelocityX(Phaser.Math.Between(-this.SHOT_VELOCITY_X, this.SHOT_VELOCITY_X))
             this.ball.body.setVelocityY(Phaser.Math.Between(this.SHOT_VELOCITY_Y_MIN, this.SHOT_VELOCITY_Y_MAX) * shotDirection)
 
-        })
-
-        // cup/ball collision
-        this.physics.add.collider(this.ball, this.cup, (ball,cup)=>{
-            ball.destroy()
+            this.totalShots++
+            this.updateStats()
         })
 
         // ball/wall collision
@@ -69,10 +66,53 @@ class Play extends Phaser.Scene {
 
         // ball/one-way collision
         this.physics.add.collider(this.ball, this.oneWay)
+
+        // Initialize counters
+        this.totalShots = 0
+        this.successfulShots = 0
+
+        // Display shot counter, score, and percentage
+        this.shotText = this.add.text(20, 20, 'Shots: 0', { fontSize: '24px', fill: '#fff' })
+        this.scoreText = this.add.text(20, 50, 'Score: 0', { fontSize: '24px', fill: '#fff' })
+        this.percentText = this.add.text(20, 80, 'Accuracy: 0%', { fontSize: '24px', fill: '#fff' })
+
+        // Ball-Cup Collision (Scoring)
+        
     }
 
-    update() {
+    updateStats() {
+        let accuracy = this.totalShots > 0 ? (this.successfulShots / this.totalShots * 100).toFixed(1) : 0
+        
+        this.shotText.setText(`Shots: ${this.totalShots}`)
+        this.scoreText.setText(`Score: ${this.successfulShots}`)
+        this.percentText.setText(`Accuracy: ${accuracy}%`)
+    }
 
+    spawnNewBall() {
+        this.ball = this.physics.add.sprite(this.scale.width / 2, this.scale.height - this.scale.height / 10, 'ball');
+        this.ball.body.setCircle(this.ball.width / 2);
+        this.ball.body.setCollideWorldBounds(true);
+        this.ball.body.setBounce(0.5);
+        this.ball.body.setDamping(true).setDrag(0.5);
+    
+        // Re-add collisions
+        this.physics.add.collider(this.ball, this.cup, (ball, cup) => {
+            this.successfulShots++;
+            ball.destroy();
+            this.spawnNewBall();
+            this.updateStats();
+        });
+    
+        this.physics.add.collider(this.ball, this.walls);
+        this.physics.add.collider(this.ball, this.oneWay);
+    }
+    update() {
+        this.physics.add.collider(this.ball, this.cup, (ball, cup) => {
+            this.successfulShots++
+            ball.destroy() 
+            this.spawnNewBall() 
+            this.updateStats()
+        })
     }
 }
 /*
